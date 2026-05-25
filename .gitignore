@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Saídas
+*.png
+*.svg
+*.pdf
+!docs/*.png
+*.log
+
+# Sistemas
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Segredos / credenciais - NUNCA commitar
+.env
+*.token
+*credentials*
+*secret*
+
+# Arquivos temporários da análise
+thesis_text.txt
+thesis_full.txt
+thesis_figs/
