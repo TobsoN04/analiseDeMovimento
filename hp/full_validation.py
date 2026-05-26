@@ -225,6 +225,6 @@ def main(nMM_max=4):
 if __name__ == '__main__':
     import argparse
     p = argparse.ArgumentParser()
-    p.add_argument('--nmm', type=int, default=4, help='Máximo número de matrizes de massa (1-4 recomendado)')
+    p.add_argument('--nmm', type=int, default=6, help='Máximo número de matrizes de massa (1-6)')
     args = p.parse_args()
     main(nMM_max=args.nmm)

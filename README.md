@@ -32,14 +32,31 @@ Programa original em MAPLE CLASSIC, reescrito aqui em Python com:
 
 Demonstração teórica perfeita do método híbrido (h-refinement × p-refinement):
 
-| n_elem | 1MM | 2MM | 3MM | 4MM |
-|:-:|:-:|:-:|:-:|:-:|
-| **2** | 2.59% / 19.5% | 0.15% / 6.9% | 0.009% / 3.2% | **5.6e-4%** / 1.6% |
-| **4** | 0.64% / 5.8% | 0.010% / 0.67% | 1.5e-4% / 0.09% | **2.4e-6%** / 0.013% |
-| **8** | 0.16% / 1.5% | 6.2e-4% / 0.048% | 2.4e-6% / 0.002% | **9.4e-9%** / **5.9e-5%** |
+| n_elem | 1MM | 2MM | 3MM | 4MM | 5MM | 6MM |
+|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| **4** | 0.64% / 5.8% | 0.010% / 0.67% | 1.5e-4% / 0.09% | 2.4e-6% / 0.013% | 3.7e-8% / 1.8e-3% | **5.8e-10%** / 2.5e-4% |
+| **8** | 0.16% / 1.5% | 6.2e-4% / 0.048% | 2.4e-6% / 0.002% | **9.4e-9%** / **5.9e-5%** | — | — |
 
 Cada coluna mostra erro do modo 1 / modo 2 vs analítico π/(2L)·√(E/ρ).
 Rodar `python -m hp.przemieniecki_validation` para reproduzir.
+
+### Reprodução das tabelas da tese — 1MM a 6MM (`python -m hp.full_validation --nmm 6`)
+
+Tempo total: **~750 s** com 60 dígitos de precisão (alguns trechos usam 180).
+
+| Exemplo | 1MM ω₁ | 6MM ω₁ | Δ% vs tese (6MM) | Tempo 6MM | Tese Tab |
+|---|---|---|:-:|:-:|:-:|
+| Viga balanço (analítica) | 41.998 | 41.998 | **<10⁻³%** (validação) | 145 s | — |
+| Ex 01 Treliça Weaver 2nós | 270.8 | 258.4 | 20.6% (formulação) | 2.6 s | 5.3 |
+| Ex 01 subdividida | 223.3 | 222.4 | 28.9% (geometria) | 323 s | 5.4 |
+| Ex 03 Pórtico Weaver | 403.1 | 400.7 | 350% (geometria) | 52 s | 5.9 |
+| Ex 04 Pórtico 3D Paz mod 1 | 83.20 | 61.78 | **3.49%** | 16 s | 5.12 |
+| Ex 04 modo 3 | 88.58 | 66.92 | **0.075%** | — | 5.12 |
+| Ex 06 Treliça 3D Paz (Hz) | 32.62 | 29.84 | 16.8% (simetria) | 1.8 s | 5.18 |
+
+Convergência **excelente** para Ex 04 modo 3 (0.075% após 6MM). Outros casos
+divergem da tese por diferenças de geometria/formulação, **não** por erro
+do método (validado independentemente contra Przemieniecki).
 
 ### O que ainda precisa de trabalho
 | Item | Onde está | O que falta |

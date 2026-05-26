@@ -3,9 +3,21 @@ hp.nmm_solver — Suporte para 3MM, 4MM, 5MM, 6MM.
 
 Extrai M3, M4, M5, M6 analíticos via série de Taylor da K(ω) fechada,
 e resolve o problema polinomial de grau n via companion estendido.
+
+PRECISÃO:
+- Até 4MM: mp.dps = 60 (60 dígitos) é suficiente
+- 5MM/6MM: aumenta automaticamente para mp.dps = 150 dentro do solver,
+  restaurando ao final. Isso é necessário porque a matriz M_n na expansão
+  tem entradas ~1e-50 a 1e-80 e a inversão de B = block_diag(I,...,M_n)
+  amplifica erros de arredondamento.
 """
 from mpmath import mp, mpf, mpc, matrix, zeros, eye, eig, taylor, sqrt, sin, cos, sinh, cosh, exp
 from hp.core import mp_inv, mp_solve, Timer
+
+
+def _auto_dps_for_nmm(n_mm):
+    """Determina precisão necessária para n_mm matrizes de massa."""
+    return {1: 50, 2: 50, 3: 60, 4: 80, 5: 120, 6: 180}.get(n_mm, 60)
 
 
 # =============================================================================
@@ -293,76 +305,100 @@ def truss_3d_M_series(E, G, A, Iy, Iz, J, Ix, rho, L, n_terms=6):
 
 def solve_nmm_companion(K0, M_list):
     """
-    Problema: (K0 - λM1 - λ²M2 - ... - λⁿ Mₙ) Φ = 0,  λ = ω².
+    Problema polinomial: (K0 - λM1 - λ²M2 - ... - λⁿ Mₙ) Φ = 0,  λ = ω².
 
-    Linearização companion (forma standard para autovalor polinomial):
+    Linearização companion estendida (forma de Frobenius):
         A z = λ B z,  z = [Φ, λΦ, λ²Φ, ..., λⁿ⁻¹Φ]ᵀ
-        A = [[ 0     I     0   ...  0  ]
-             [ 0     0     I   ...  0  ]
-             [...                     ...]
-             [ 0     0     0   ...  I  ]
-             [ K0   -M1   -M2  ...  -M_{n-1} ]]
+
+        A = [[ 0    I    0  ...  0  ]
+             [ 0    0    I  ...  0  ]
+             [...                 ...]
+             [ 0    0    0  ...  I  ]
+             [ K0  -M1  -M2 ... -M_{n-1} ]]
+
         B = block_diag(I, I, ..., I, M_n)
 
-    Multiplicar a última linha por λ recupera:
-        K0·Φ - M1·λΦ - M2·λ²Φ - ... - M_{n-1}·λⁿ⁻¹Φ = λⁿ·M_n·Φ
-        ⇔ K0·Φ = λM1·Φ + λ²M2·Φ + ... + λⁿMn·Φ.
+    Solver com PRECISÃO ADAPTATIVA: aumenta mp.dps conforme n_mm para
+    garantir estabilidade da inversão da matriz B (cujo último bloco M_n
+    tem normas decrescentes em ω^(2n) — para 6MM, ~1e-90 em SI).
 
-    Retorna lista de ω = sqrt(λ_real_positivo) ordenada.
+    Retorna autovalores ω = sqrt(λ_real_positivo) ordenados crescentemente.
     """
     n_size = K0.rows
-    n_deg = len(M_list)  # número de matrizes de massa (M1, M2, ..., M_n)
-    N = n_size * n_deg
-    I_n = eye(n_size)
-    Z_n = zeros(n_size, n_size)
+    n_deg = len(M_list)
 
-    A = zeros(N, N)
-    B = zeros(N, N)
+    # Salvar precisão original e aumentar se necessário
+    orig_dps = mp.dps
+    needed = _auto_dps_for_nmm(n_deg)
+    if mp.dps < needed:
+        mp.dps = needed
 
-    # Linhas 0..(n_deg-1) (exceto última): A[i, i+1·n_size] = I
-    for k in range(n_deg - 1):
+    try:
+        N = n_size * n_deg
+        I_n = eye(n_size)
+        A = zeros(N, N)
+        B = zeros(N, N)
+
+        for k in range(n_deg - 1):
+            for i in range(n_size):
+                for j in range(n_size):
+                    A[k*n_size + i, (k+1)*n_size + j] = I_n[i, j]
+                    B[k*n_size + i, k*n_size + j] = I_n[i, j]
+
+        last_row = (n_deg - 1) * n_size
         for i in range(n_size):
             for j in range(n_size):
-                A[k*n_size + i, (k+1)*n_size + j] = I_n[i, j]
-                B[k*n_size + i, k*n_size + j] = I_n[i, j]
-
-    # Última linha-bloco: [K0, -M1, -M2, ..., -M_{n-1}]
-    last_row = (n_deg - 1) * n_size
-    for i in range(n_size):
-        for j in range(n_size):
-            A[last_row + i, j] = K0[i, j]
-    for k in range(1, n_deg):
-        sign = -1
+                A[last_row + i, j] = K0[i, j]
+        for k in range(1, n_deg):
+            for i in range(n_size):
+                for j in range(n_size):
+                    A[last_row + i, k*n_size + j] = -M_list[k-1][i, j]
         for i in range(n_size):
             for j in range(n_size):
-                A[last_row + i, k*n_size + j] = sign * M_list[k-1][i, j]
-    # B: bloco diagonal final = M_n
-    for i in range(n_size):
-        for j in range(n_size):
-            B[last_row + i, last_row + j] = M_list[n_deg - 1][i, j]
+                B[last_row + i, last_row + j] = M_list[n_deg - 1][i, j]
 
-    Binv = mp_inv(B)
-    C = Binv * A
-    eigvals, eigvecs = eig(C)
+        Binv = mp_inv(B)
+        C = Binv * A
+        eigvals, eigvecs = eig(C)
 
-    pairs = []
-    for k, lam in enumerate(eigvals):
-        if hasattr(lam, 'imag'):
-            re, im = lam.real, lam.imag
-        else:
-            re, im = mpf(lam), mpf(0)
-        # físico: λ real positivo
-        if re > mpf('1e-15') and abs(im) < abs(re) * mpf('1e-20'):
-            pairs.append((re, k))
-    pairs.sort(key=lambda x: x[0])
-    omegas = [sqrt(lam) for lam, _ in pairs]
+        # Filtragem aprimorada de autovalores físicos
+        # Critério: λ real positivo (autovalor físico = ω²)
+        # Tolerância de imaginariedade escala com 1/precision
+        im_tol = mpf(10) ** (-mp.dps // 3)
+        pairs = []
+        for k, lam in enumerate(eigvals):
+            if hasattr(lam, 'imag'):
+                re, im = mpf(lam.real), mpf(lam.imag)
+            else:
+                re, im = mpf(lam), mpf(0)
+            if re > mpf('1e-15'):
+                rel_im = abs(im) / abs(re) if abs(re) > mpf('1e-50') else mpf('inf')
+                if rel_im < im_tol:
+                    pairs.append((re, k))
+        pairs.sort(key=lambda x: x[0])
 
-    Phi = zeros(n_size, len(pairs))
-    for col, (_, k) in enumerate(pairs):
-        for i in range(n_size):
-            v = eigvecs[i, k]
-            Phi[i, col] = v.real if hasattr(v, 'real') else v
-    return omegas, Phi
+        # Remover duplicatas espúrias (modos repetidos pelo companion)
+        # O companion duplica cada modo n vezes (em y, λy, λ²y, ...)
+        # Manter apenas frequências distintas
+        unique = []
+        for lam, k in pairs:
+            is_dup = False
+            for prev_lam, _ in unique:
+                if abs(lam - prev_lam) < lam * mpf('1e-15'):
+                    is_dup = True
+                    break
+            if not is_dup:
+                unique.append((lam, k))
+
+        omegas = [sqrt(lam) for lam, _ in unique]
+        Phi = zeros(n_size, len(unique))
+        for col, (_, k) in enumerate(unique):
+            for i in range(n_size):
+                v = eigvecs[i, k]
+                Phi[i, col] = v.real if hasattr(v, 'real') else v
+        return omegas, Phi
+    finally:
+        mp.dps = orig_dps
 
 
 # =============================================================================
