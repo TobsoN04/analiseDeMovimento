@@ -19,11 +19,27 @@ Programa original em MAPLE CLASSIC, reescrito aqui em Python com:
 |---|---|
 | Método híbrido FEM (Hellinger-Reissner) | ✅ Implementado e validado |
 | Viga em balanço vs solução analítica (3MM) | ✅ **0.0005% de erro** |
+| Barra fixo-livre vs Przemieniecki Cap 12.5 (8 elem × 4MM) | ✅ **9.4×10⁻⁹% de erro** |
+| M0 nossa = m₀ Przemieniecki Eq. (10.81) | ✅ 30 dígitos batem |
+| M2 nossa = m₂ Przemieniecki Eq. (10.110) (com fator 2 de convenção) | ✅ |
 | K(ω) fechada (truss, beam Williams-Wittrick, torsion) | ✅ |
 | Linearização companion 1MM, 2MM, 3MM, 4MM | ✅ |
 | M3-M6 analíticos via `mpmath.taylor` | ✅ |
 | Versão com amortecimento (Rayleigh + Newmark) | ✅ |
 | Fuzzy-TOPSIS (4 alternativas) | ✅ |
+
+### Convergência dupla (Przemieniecki Cap 12.5 — barra fixo-livre)
+
+Demonstração teórica perfeita do método híbrido (h-refinement × p-refinement):
+
+| n_elem | 1MM | 2MM | 3MM | 4MM |
+|:-:|:-:|:-:|:-:|:-:|
+| **2** | 2.59% / 19.5% | 0.15% / 6.9% | 0.009% / 3.2% | **5.6e-4%** / 1.6% |
+| **4** | 0.64% / 5.8% | 0.010% / 0.67% | 1.5e-4% / 0.09% | **2.4e-6%** / 0.013% |
+| **8** | 0.16% / 1.5% | 6.2e-4% / 0.048% | 2.4e-6% / 0.002% | **9.4e-9%** / **5.9e-5%** |
+
+Cada coluna mostra erro do modo 1 / modo 2 vs analítico π/(2L)·√(E/ρ).
+Rodar `python -m hp.przemieniecki_validation` para reproduzir.
 
 ### O que ainda precisa de trabalho
 | Item | Onde está | O que falta |
@@ -53,7 +69,8 @@ python/
 │   ├── examples_refined.py# variantes subdivididas para fuzzy-TOPSIS
 │   ├── nmm_solver.py      # M3-M6 via Taylor + companion polinomial
 │   ├── validation.py      # validação 1MM/2MM vs tese
-│   └── full_validation.py # pipeline completo 1-4MM (entry point)
+│   ├── full_validation.py # pipeline completo 1-4MM (entry point)
+│   └── przemieniecki_validation.py  # validação contra livro Przemieniecki
 │
 ├── damped/                # VERSÃO AMORTECIDA (paralela, não substitui)
 │   ├── core.py            # Rayleigh, autovalor quadrático, Newmark-β
@@ -79,6 +96,10 @@ python -m hp.full_validation --nmm 4
 
 # Apenas viga em balanço (validação contra analítica)
 python -m hp.validation
+
+# Validação contra Przemieniecki Cap 12.5 (barra fixo-livre)
+# Demonstra convergência dupla (h × p) com até 9.4e-9% de erro
+python -m hp.przemieniecki_validation
 ```
 
 ### Versão amortecida
@@ -159,6 +180,10 @@ python main.py --example 4 --nmm 2  # exemplo específico
 ### Livros base (em `Downloads/`)
 - `148855732-Matrix-Analysis-OfbFramed-Structures.pdf` — Weaver & Gere (1980)
 - `135434492-Franklin-Y-Cheng-Matrix-Analysis-of-Structural-BookFi-org.pdf` — Cheng
+- `99681856-Theory-of-Matrix-Structural-Analysis.pdf` — Przemieniecki (1968)
+  - **Cap 10 (Eqs. 10.81, 10.108-10.113)**: matrizes m₀, m₂, k₀, k₄ frequência-dependentes
+  - **Cap 12.5**: exemplo barra fixo-livre 2 elem com ω₁L·√(ρ/E)=1.6114 e ω₂L=5.6293
+  - **Cap 13.14**: rocket dinâmica com pulse — base para Newmark
 
 ---
 
