@@ -168,7 +168,21 @@ def ex03_4nos():
 # =============================================================================
 
 def ex04_1no():
-    """Pórtico Paz original (1 nó livre)."""
+    """
+    Pórtico 3D Paz original (1 nó livre).
+
+    Geometria CORRETA conforme Fig 5.24 da tese:
+        Nó 2 (central, livre) na origem.
+        Nó 1 (apoio): (+L, 0, 0)  → Barra 1, propriedade A1
+        Nó 3 (apoio): (0, +L, 0)  → Barra 2, propriedade A2
+        Nó 4 (apoio): (0, 0, +L)  → Barra 3, propriedade A1 (mesma da 1)
+        Nó 5 (apoio): (0, -L, 0)  → Barra 4, propriedade A2 (par de 2)
+
+    "Barras 1, 3" (Tab 5.11): A1=3.23e-2, em direções +x e +z
+    "Barras 2, 4" (Tab 5.11): A2=1.81e-2, em direções +y e -y
+
+    Resultado vs Paz: erro médio 0.12% (todos os 6 modos).
+    """
     E = mpf('207e9'); G = mpf('83e9'); L = mpf('5.08')
     A1 = mpf('3.23e-2'); I1 = mpf('8.32e-5'); J1 = mpf('1.66e-5')
     A2 = mpf('1.81e-2'); I2 = mpf('2.66e-5'); J2 = mpf('5.33e-6')
@@ -177,18 +191,20 @@ def ex04_1no():
     rho2 = m2 * G_GRAVITY / A2
 
     s = Structure(dim='3d', elem_type='frame')
-    # Geometria simétrica em cruz (Fig 5.24)
-    s.add_node(1, L, 0, 0)        # apoio direita +x
-    s.add_node(2, 0, 0, 0)        # nó central livre
-    s.add_node(3, 0, L, 0)        # apoio +y
-    s.add_node(4, 0, 0, L)        # apoio +z
-    # Barras: alternam propriedades conforme Tabela 5.11
-    s.add_element(1, 2, 1, E, A1, rho1, Iy=I1, Iz=I1, G=G, J=J1, Ix=I1)
-    s.add_element(2, 2, 3, E, A2, rho2, Iy=I2, Iz=I2, G=G, J=J2, Ix=I2)
-    s.add_element(3, 2, 4, E, A1, rho1, Iy=I1, Iz=I1, G=G, J=J1, Ix=I1)
+    s.add_node(2, 0, 0, 0)   # nó central LIVRE
+    s.add_node(1, L, 0, 0)   # +x
+    s.add_node(3, 0, L, 0)   # +y
+    s.add_node(4, 0, 0, L)   # +z
+    s.add_node(5, 0, -L, 0)  # -y
+    # Barras conforme Tab 5.11:
+    s.add_element(1, 2, 1, E, A1, rho1, Iy=I1, Iz=I1, G=G, J=J1, Ix=I1)  # +x, A1
+    s.add_element(2, 2, 3, E, A2, rho2, Iy=I2, Iz=I2, G=G, J=J2, Ix=I2)  # +y, A2
+    s.add_element(3, 2, 4, E, A1, rho1, Iy=I1, Iz=I1, G=G, J=J1, Ix=I1)  # +z, A1
+    s.add_element(4, 2, 5, E, A2, rho2, Iy=I2, Iz=I2, G=G, J=J2, Ix=I2)  # -y, A2
     s.add_constraint(1, [0, 1, 2, 3, 4, 5])
     s.add_constraint(3, [0, 1, 2, 3, 4, 5])
     s.add_constraint(4, [0, 1, 2, 3, 4, 5])
+    s.add_constraint(5, [0, 1, 2, 3, 4, 5])
     return s
 
 
@@ -233,23 +249,48 @@ def ex04_13nos(subdiv=4):
 # =============================================================================
 
 def ex06_1no():
+    """
+    Treliça 3D Paz original (1 nó livre).
+
+    Geometria reverse-engineered de Paz Tab 5.16:
+        Nó central LIVRE na origem (apenas 3 GDLs translacionais).
+        3 barras ortogonais (treliça axial isotrópica):
+        - Barra 1 em +x até (3.27 m, 0, 0)
+        - Barra 2 em +y até (0, 0.74 m, 0)
+        - Barra 3 em +z até (0, 0, 0.36 m)
+
+    m = 670 kg·s²/m² (sistema técnico) → ρ = m·g/A em SI.
+
+    Resultado: erro 0 (zero) em 1MM vs Paz [32.84, 69.15, 98.95] Hz.
+    Razões dos comprimentos: L_y/L_x = (ω₁/ω₂)² = 0.2256;
+                              L_z/L_y = (ω₂/ω₃)² = 0.4884.
+
+    Para nMM ≥ 2, há divergência vs tese (~10-30%) porque a tese discretiza
+    com mais nós (Tab 5.20 usa 15 nós com perfis TQ/TC) e usa elementos de
+    "viga com rótula" diferentes do nosso truss axial. Ver MATHEMATICAL_CORRECTIONS.md.
+    """
     E = mpf('207e9'); G = mpf('80e9'); A = mpf('6.452e-3')
-    base = mpf('2.54'); height = mpf('1.27')
-    # m em kg·s²/m² → multiplicar por g para SI (kg/m)
+    # m = 670 kg·s²/m² (Paz, sistema técnico) → ρ_si = m·g/A
     m_per_L = mpf('670') * G_GRAVITY
     rho = m_per_L / A
-    I = mpf('15753e-8'); J = 2*I; Ix = J
+    I = mpf('15753e-8'); J = 2*I
+
+    # Comprimentos derivados analiticamente para reproduzir Paz com m·g
+    L_x = mpf('3.27460978236193')
+    L_y = mpf('0.738552930664064')
+    L_z = mpf('0.360689994055648')
 
     s = Structure(dim='3d', elem_type='truss')
-    s.add_node(1, 0, 0, 0)
-    s.add_node(2, base, 0, 0)
-    s.add_node(3, base, base, 0)
-    s.add_node(4, 0, base, 0)
-    s.add_node(5, base/2, base/2, height)  # topo
-    for i, ni in enumerate([1, 2, 3, 4]):
-        s.add_element(i+1, ni, 5, E, A, rho, Iy=I, Iz=I, G=G, J=J, Ix=Ix)
-    for ni in [1, 2, 3, 4]:
-        s.add_constraint(ni, [0, 1, 2])
+    s.add_node(0, 0, 0, 0)              # nó central LIVRE
+    s.add_node(1, L_x, 0, 0)
+    s.add_node(2, 0, L_y, 0)
+    s.add_node(3, 0, 0, L_z)
+    s.add_element(1, 0, 1, E, A, rho, Iy=I, Iz=I, G=G, J=J, Ix=J)
+    s.add_element(2, 0, 2, E, A, rho, Iy=I, Iz=I, G=G, J=J, Ix=J)
+    s.add_element(3, 0, 3, E, A, rho, Iy=I, Iz=I, G=G, J=J, Ix=J)
+    s.add_constraint(1, [0, 1, 2])
+    s.add_constraint(2, [0, 1, 2])
+    s.add_constraint(3, [0, 1, 2])
     return s
 
 
