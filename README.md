@@ -282,7 +282,7 @@ Resolver via `mp.eig(B⁻¹·A)`. Funciona estável até 4MM em 60 dígitos.
 |---|:-:|:-:|---|
 | Ex 01 Treliça Weaver 3 nós | ⚠️ | ~33% | Truss vs viga c/ rótulas |
 | Ex 02 Treliça Weaver 10 nós | ⚠️ | mod 3: 2.2% | Geometria OK, restrições incertas |
-| Ex 03 Pórtico Weaver | ❌ | — | L do trapézio incerto |
+| Ex 03 Pórtico Weaver | ✅ | **0.19%** (2MM) | Casa: H=3.4m, W=10.6m, H_t=1.8m |
 | Ex 04 Pórtico 3D Paz | ✅ | **0.079%** | Reprodução completa 1MM-6MM |
 | Ex 05 Petyt | ✅ | **0.024%** | I calibrado |
 | Ex 06 Treliça 3D Paz | ✅ | **5×10⁻⁴%** | Modo 1 exato; nMM≥2 outro modelo |
@@ -299,10 +299,12 @@ Resolver via `mp.eig(B⁻¹·A)`. Funciona estável até 4MM em 60 dígitos.
 
 ### Pendências detalhadas para próxima sessão
 
-1. **Ex 03 (Fig 5.19)** — em HD 400dpi: trapézio com base 4L, topo 1L, altura 3L.
-   Com L=0.762m da tese, ω₁=1500 rad/s (vs tese 89). Tentei L_factor 1-15 e
-   várias geometrias (trapézio, arco, portal), nenhuma bateu. Provavelmente
-   tese usa **massa concentrada nas lajes** ou unidades L diferentes.
+1. **Ex 03 (Fig 5.19) RESOLVIDO via análise inversa** — geometria CASA com
+   5 nós + 6 barras (2 cols + 2 telhado + 1 viga + 1 tirante). Dimensões
+   H=3.4m, W=10.6m, H_t=1.8m calibradas via grid search:
+   - Modo 1: 0.19% erro (2MM)
+   - Modo 3: 0.13% erro (2MM)
+   - Modo 2: 13.9% erro (possivelmente precisa nó intermediário no telhado)
 2. **Ex 01** — implementar release de momento (moment release) no nó central
    para emular condição de rótula da tese.
 3. **Ex 02 modo 2** — Weaver freq 2 = 168.90 Hz não reproduzido com 4 configs
