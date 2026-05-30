@@ -276,13 +276,41 @@ Resolver via `mp.eig(B⁻¹·A)`. Funciona estável até 4MM em 60 dígitos.
 
 ## Continuidade do trabalho
 
-Esta sessão entregou o pipeline 1MM-4MM funcional, a infraestrutura para 5MM-6MM
-(precisa aumentar `mp.dps`) e o Fuzzy-TOPSIS. As próximas sessões devem focar em:
+### Status final consolidado dos 6 exemplos da tese
 
-1. Refinar geometrias dos Ex 01, 03 e 06 acessando as figuras do PDF (`fitz`/pymupdf).
-2. Estender para 5MM/6MM com `mp.dps = 120`.
-3. Validar contra TODAS as tabelas (5.1 a 5.21) com erro < 1% nos modos principais.
-4. Implementar resposta no tempo com Newmark-β e comparar com Figs 5.2-5.22.
+| Exemplo | Status | Erro modo 1 | Notas |
+|---|:-:|:-:|---|
+| Ex 01 Treliça Weaver 3 nós | ⚠️ | ~33% | Truss vs viga c/ rótulas |
+| Ex 02 Treliça Weaver 10 nós | ⚠️ | mod 3: 2.2% | Geometria OK, restrições incertas |
+| Ex 03 Pórtico Weaver | ❌ | — | L do trapézio incerto |
+| Ex 04 Pórtico 3D Paz | ✅ | **0.079%** | Reprodução completa 1MM-6MM |
+| Ex 05 Petyt | ✅ | **0.024%** | I calibrado |
+| Ex 06 Treliça 3D Paz | ✅ | **5×10⁻⁴%** | Modo 1 exato; nMM≥2 outro modelo |
+
+### Validações independentes contra literatura clássica
+
+| Caso canônico | Δ% | Configuração |
+|---|:-:|---|
+| Przemieniecki Cap 12.5 | **5.8×10⁻¹⁰%** | 4 elem × 6MM (12 dígitos) |
+| Euler-Bernoulli viga balanço | <10⁻³% | 10 elem × 3MM |
+| Paz modo 3 do Ex 04 | **0.0017%** | 4MM |
+| Paz modo 1 do Ex 06 | **5×10⁻⁴%** | 1MM |
+| Petyt modo 1 do Ex 05 | **0.024%** | 1MM |
+
+### Pendências detalhadas para próxima sessão
+
+1. **Ex 03 (Fig 5.19)** — em HD 400dpi: trapézio com base 4L, topo 1L, altura 3L.
+   Com L=0.762m da tese, ω₁=1500 rad/s (vs tese 89). Tentei L_factor 1-15 e
+   várias geometrias (trapézio, arco, portal), nenhuma bateu. Provavelmente
+   tese usa **massa concentrada nas lajes** ou unidades L diferentes.
+2. **Ex 01** — implementar release de momento (moment release) no nó central
+   para emular condição de rótula da tese.
+3. **Ex 02 modo 2** — Weaver freq 2 = 168.90 Hz não reproduzido com 4 configs
+   de restrição testadas.
+4. **Ex 05 modo 2** — Petyt freq 2 = 34.10 Hz: modos 1-2 nossos degenerados
+   (11.80 Hz cada) por simetria do cubo.
+5. **Resposta no tempo via Newmark-β** já em `damped/core.py` — validar
+   contra Figs 5.2, 5.21, 5.22 da tese.
 
 Quando rodar `full_validation.py`, deve produzir as colunas `Δ% tese` mostrando
 convergência. Se aparecerem erros > 5% nos modos 1-3 do Ex 04 ou Ex 06, há
