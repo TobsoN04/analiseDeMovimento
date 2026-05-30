@@ -83,22 +83,22 @@ def example_01_truss_2d(n_mass_matrices=6, plot=True):
     print("EXEMPLO 01 - Treliça plana (Weaver)")
     print("=" * 70)
 
+    # Geometria correta (Fig 5.1): triângulo retângulo 3-4-5
     E = 207e9; rho = 7850.0; L = 6.35
-    I1 = 16960e-8; A1 = 64.93e-4
-    I2 = 10303e-8; A2 = 39.12e-4
-    I3 = 13530e-8; A3 = 51.58e-4
+    A = 6.451e-3; I = 16960e-8
+    x3 = 0.6 * L   # base = 0.6L
+    y2 = 0.8 * L   # altura = 0.8L
 
-    h = L * np.sin(np.pi / 3)
     struct = Structure(dim='2d', elem_type='truss')
     struct.add_node(1, 0.0, 0.0)
-    struct.add_node(2, L, 0.0)
-    struct.add_node(3, L / 2, h)
-    struct.add_element(1, 1, 2, E, A1, rho, I=I1)
-    struct.add_element(2, 2, 3, E, A2, rho, I=I2)
-    struct.add_element(3, 1, 3, E, A3, rho, I=I3)
-    struct.add_constraint(1, [1])
-    struct.add_constraint(3, [0, 1])
-    struct.add_force(2, 1, 90e3)
+    struct.add_node(2, x3, y2)
+    struct.add_node(3, x3, 0.0)
+    struct.add_element(1, 1, 2, E, A, rho, I=I)          # hipotenusa, área A
+    struct.add_element(2, 3, 2, E, 0.8 * A, rho, I=I)    # vertical, área 0.8A
+    struct.add_element(3, 1, 3, E, 0.6 * A, rho, I=I)    # base, área 0.6A
+    struct.add_constraint(1, [1])      # nó 1: restrição vertical
+    struct.add_constraint(3, [0, 1])   # nó 3: restrição total
+    struct.add_force(2, 0, 90e3)       # P(t) horizontal no nó 2
 
     return _run_analysis(struct, n_mass_matrices, _make_impulse(3.75e-3),
                          2, 1, 0.02, 500,

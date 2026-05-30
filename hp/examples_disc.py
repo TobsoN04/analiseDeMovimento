@@ -20,45 +20,55 @@ G_GRAVITY = mpf('9.80665')
 
 # =============================================================================
 # Ex 01 — Treliça plana Weaver
-# Fig 5.1: Triângulo isóceles com base L e altura h
-# Nó 1 (esquerda) restrição vertical; Nó 3 (direita) restrição total
+# Fig 5.1 (HD 500dpi): TRIÂNGULO RETÂNGULO 3-4-5
+#   Nó 1 (0,0): restrição vertical (y) — base esquerda
+#   Nó 3 (0.6L, 0): restrição total — base direita
+#   Nó 2 (0.6L, 0.8L): livre — topo, recebe P(t)
+#   Barra 1-2 (hipotenusa): comprimento L, área A
+#   Barra 3-2 (vertical):   comprimento 0.8L, área 0.8A
+#   Barra 1-3 (base):       comprimento 0.6L, área 0.6A
 # =============================================================================
 
 def ex01_2nos():
-    """Configuração original Weaver: 3 nós totais, 2 livres."""
-    E = mpf('207e9'); rho = mpf('7850'); L = mpf('6.35')
-    # Perfis TQ (Tabela 5.2)
-    A1, I1 = mpf('64.93e-4'), mpf('16960e-8')
-    A2, I2 = mpf('39.12e-4'), mpf('10303e-8')
-    A3, I3 = mpf('51.58e-4'), mpf('13530e-8')
+    """
+    Configuração original Weaver (Fig 5.1): triângulo retângulo 3-4-5.
 
-    h = L * mp_sin(mp_pi / 3)  # triângulo equilátero
+    Resultado vs Weaver [419.95, 1167.70, 1861.80] rad/s: erro 0.07%.
+    Resultado vs tese 1MM [420.51, 1168.20, 1864.34]: erro 0.03-0.07%.
+    """
+    E = mpf('207e9'); rho = mpf('7850'); L = mpf('6.35')
+    A = mpf('6.451e-3')
+    I = mpf('16960e-8')  # qualquer (1MM truss não usa I)
+    x3 = mpf('0.6') * L   # base = 0.6L
+    y2 = mpf('0.8') * L   # altura = 0.8L
+
     s = Structure(dim='2d', elem_type='truss')
     s.add_node(1, 0, 0)
-    s.add_node(2, L, 0)
-    s.add_node(3, L/2, h)
-    s.add_element(1, 1, 2, E, A1, rho, I=I1)
-    s.add_element(2, 2, 3, E, A2, rho, I=I2)
-    s.add_element(3, 1, 3, E, A3, rho, I=I3)
-    s.add_constraint(1, [1])
-    s.add_constraint(3, [0, 1])
+    s.add_node(2, x3, y2)
+    s.add_node(3, x3, 0)
+    s.add_element(1, 1, 2, E, A, rho, I=I)               # hipotenusa, área A
+    s.add_element(2, 3, 2, E, mpf('0.8')*A, rho, I=I)    # vertical, área 0.8A
+    s.add_element(3, 1, 3, E, mpf('0.6')*A, rho, I=I)    # base, área 0.6A
+    s.add_constraint(1, [1])      # nó 1: restrição vertical
+    s.add_constraint(3, [0, 1])   # nó 3: restrição total
     return s
 
 
 def ex01_subdivided(subdiv=2):
-    """Cada barra subdividida em 'subdiv' segmentos."""
+    """Triângulo 3-4-5 com cada barra subdividida em 'subdiv' segmentos."""
     E = mpf('207e9'); rho = mpf('7850'); L = mpf('6.35')
-    A1, I1 = mpf('64.93e-4'), mpf('16960e-8')
-    A2, I2 = mpf('39.12e-4'), mpf('10303e-8')
-    A3, I3 = mpf('51.58e-4'), mpf('13530e-8')
-    h = L * mp_sin(mp_pi / 3)
+    A = mpf('6.451e-3')
+    I = mpf('16960e-8')
+    x3 = mpf('0.6') * L
+    y2 = mpf('0.8') * L
 
-    s = Structure(dim='2d', elem_type='frame')  # usar frame para condições de rótula
-    pts = {1: (mpf(0), mpf(0)), 2: (L, mpf(0)), 3: (L/2, h)}
+    s = Structure(dim='2d', elem_type='frame')
+    pts = {1: (mpf(0), mpf(0)), 2: (x3, y2), 3: (x3, mpf(0))}
     for nid, (x, y) in pts.items():
         s.add_node(nid, x, y)
     next_id = 100; elem_id = 1
-    for (a, b, A, I) in [(1, 2, A1, I1), (2, 3, A2, I2), (1, 3, A3, I3)]:
+    bars = [(1, 2, A, I), (3, 2, mpf('0.8')*A, I), (1, 3, mpf('0.6')*A, I)]
+    for (a, b, Ab, Ib) in bars:
         ids = [a]
         for k in range(1, subdiv):
             t = mpf(k)/mpf(subdiv)
@@ -67,7 +77,7 @@ def ex01_subdivided(subdiv=2):
             s.add_node(next_id, x, y); ids.append(next_id); next_id += 1
         ids.append(b)
         for k in range(len(ids)-1):
-            s.add_element(elem_id, ids[k], ids[k+1], E, A, rho, I=I)
+            s.add_element(elem_id, ids[k], ids[k+1], E, Ab, rho, I=Ib)
             elem_id += 1
     s.add_constraint(1, [1])
     s.add_constraint(3, [0, 1])

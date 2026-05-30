@@ -280,7 +280,7 @@ Resolver via `mp.eig(B⁻¹·A)`. Funciona estável até 4MM em 60 dígitos.
 
 | Exemplo | Status | Erro modo 1 | Notas |
 |---|:-:|:-:|---|
-| Ex 01 Treliça Weaver 3 nós | ⚠️ | ~33% | Truss vs viga c/ rótulas |
+| Ex 01 Treliça Weaver 3 nós | ✅ | **0.07%** | Triângulo retângulo 3-4-5 |
 | Ex 02 Treliça Weaver 10 nós | ⚠️ | mod 3: 2.2% | Geometria OK, restrições incertas |
 | Ex 03 Pórtico Weaver | ✅ | **0.19%** (2MM) | Casa: H=3.4m, W=10.6m, H_t=1.8m |
 | Ex 04 Pórtico 3D Paz | ✅ | **0.079%** | Reprodução completa 1MM-6MM |
@@ -305,8 +305,9 @@ Resolver via `mp.eig(B⁻¹·A)`. Funciona estável até 4MM em 60 dígitos.
    - Modo 1: 0.19% erro (2MM)
    - Modo 3: 0.13% erro (2MM)
    - Modo 2: 13.9% erro (possivelmente precisa nó intermediário no telhado)
-2. **Ex 01** — implementar release de momento (moment release) no nó central
-   para emular condição de rótula da tese.
+2. **Ex 01 RESOLVIDO** — Fig 5.1 em HD 500dpi revelou triângulo retângulo 3-4-5
+   (não equilátero): base 0.6L (área 0.6A), vertical 0.8L (área 0.8A),
+   hipotenusa L (área A). Erro 0.07% vs Weaver em todos os 3 modos.
 3. **Ex 02 modo 2** — Weaver freq 2 = 168.90 Hz não reproduzido com 4 configs
    de restrição testadas.
 4. **Ex 05 modo 2** — Petyt freq 2 = 34.10 Hz: modos 1-2 nossos degenerados
