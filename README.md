@@ -281,7 +281,7 @@ Resolver via `mp.eig(B⁻¹·A)`. Funciona estável até 4MM em 60 dígitos.
 | Exemplo | Status | Erro modo 1 | Notas |
 |---|:-:|:-:|---|
 | Ex 01 Treliça Weaver 3 nós | ✅ | **0.07%** | Triângulo retângulo 3-4-5 |
-| Ex 02 Treliça Weaver 10 nós | ⚠️ | mod 3: 2.2% | Geometria OK, restrições incertas |
+| Ex 02 Treliça Weaver 10 nós | ⚠️ | sym mod3: 4.1%, antisym mod7: 1.1% | Geometria Pratt OK; Weaver usa redução DOF |
 | Ex 03 Pórtico Weaver | ✅ | **0.19%** (2MM) | Casa: H=3.4m, W=10.6m, H_t=1.8m |
 | Ex 04 Pórtico 3D Paz | ✅ | **0.079%** | Reprodução completa 1MM-6MM |
 | Ex 05 Petyt | ✅ | **0.024%** | I calibrado |
@@ -308,8 +308,17 @@ Resolver via `mp.eig(B⁻¹·A)`. Funciona estável até 4MM em 60 dígitos.
 2. **Ex 01 RESOLVIDO** — Fig 5.1 em HD 500dpi revelou triângulo retângulo 3-4-5
    (não equilátero): base 0.6L (área 0.6A), vertical 0.8L (área 0.8A),
    hipotenusa L (área A). Erro 0.07% vs Weaver em todos os 3 modos.
-3. **Ex 02 modo 2** — Weaver freq 2 = 168.90 Hz não reproduzido com 4 configs
-   de restrição testadas.
+3. **Ex 02 — geometria Pratt DEFINITIVA decifrada** (Fig 5.7 HD): 10 nós, 16
+   barras, painéis quadrados L×L. Cordões + 4 verticais + 4 diagonais
+   unidirecionais; áreas A / 1.5A (diag) / 0.5A (barra 12). Apoios: 1,2 fixos;
+   9,10 horizontal (sym) ou vertical (antisym). Os valores de Weaver
+   (79.55/168.90 Hz) aparecem no espectro (sym modo 3 = 82.84 Hz Δ4.1%;
+   antisym modo 7 = 167.0 Hz Δ1.1%) mas NÃO como modo 1. As diagonais
+   unidirecionais quebram a simetria mirror, e Weaver (1965) usa redução de
+   DOF / massa concentrada em nós-mestre — metodologia replicada pela tese
+   mas não detalhada. Testados: massa consistente, lumped, condensação de
+   Guyan (horizontal e vertical), 10+ configs de apoio. Nenhum coloca
+   79.55/168.90 como modos 1-2.
 4. **Ex 05 modo 2** — Petyt freq 2 = 34.10 Hz: modos 1-2 nossos degenerados
    (11.80 Hz cada) por simetria do cubo.
 5. **Resposta no tempo via Newmark-β** já em `damped/core.py` — validar

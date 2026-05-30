@@ -85,41 +85,73 @@ def ex01_subdivided(subdiv=2):
 
 
 # =============================================================================
-# Ex 02 — Treliça Weaver simétrica (Fig 5.7)
-# 8 nós originais + carga em nó 3, simétrica
-# Alumínio: A_vert/horiz = 1.5 in², A_diag = 0.5 in² (convertidos)
-# Original Weaver americano: A=1.5 in² e 0.5 in²
-# Tese converteu para metros: A = 6×10⁻⁴ m², ρ = 2620 kg/m³, E = 69 GPa, L = 5 m
+# Ex 02 — Treliça Weaver plana (Fig 5.7, HD 250dpi)
+#
+# Geometria DEFINITIVA da figura: treliça Pratt com 4 painéis quadrados L×L.
+#   Topo (y=L):  nós 1, 3, 5, 7, 9  em x = 0, L, 2L, 3L, 4L
+#   Base (y=0):  nós 2, 4, 6, 8, 10 em x = 0, L, 2L, 3L, 4L
+#   16 barras (numeradas na figura):
+#     Cordão superior [1-4]: 1-3, 3-5, 5-7, 7-9
+#     Cordão inferior [5-8]: 2-4, 4-6, 6-8, 8-10
+#     Verticais [9-12]:      3-4, 5-6, 7-8, 9-10
+#     Diagonais [13-16]:     2-3, 4-5, 6-7, 8-9  (base-esq → topo-dir)
+#   Áreas: A (vert/horiz), 1.5A (diagonais), 0.5A (barra 12 = vertical 9-10)
+#
+# Apoios (tese pg 53): nós 1, 2 totalmente restringidos; nós 9, 10 com
+#   restrição HORIZONTAL (modo simétrico) ou VERTICAL (modo antissimétrico).
+#
+# NOTA SOBRE FREQUÊNCIAS:
+#   Weaver [14] reporta 79.55 Hz (sym) e 168.90 Hz (antisym) como 1ª e 2ª freq.
+#   Com massa consistente HFEM, esses valores aparecem no espectro modal
+#   (config sym: modo 3 ≈ 82.84 Hz, Δ4.1%; config antisym: modo 7 ≈ 167 Hz,
+#   Δ1.1%), porém NÃO como modo 1. Weaver (1965) usa redução de DOF / massa
+#   concentrada em nós-mestre selecionados, metodologia que a tese replicou
+#   mas não detalhou. A geometria/áreas/restrições aqui estão corretas.
 # =============================================================================
 
-def ex02_8nos():
-    """Treliça plana Weaver, 8 nós, 12 barras alumínio."""
+def ex02_8nos(restricao_freq=1):
+    """
+    Treliça Pratt de Weaver (Fig 5.7). restricao_freq:
+      1 = modo simétrico   (nós 9,10 com x restrito)
+      2 = modo antissimétrico (nós 9,10 com y restrito)
+    """
     E = mpf('69e9'); rho = mpf('2620'); L = mpf('5')
-    A_vh = mpf('6e-4'); I_vh = mpf('30e-9')   # estimativa para verticais/horizontais
-    A_d = mpf('2e-4'); I_d = mpf('10e-9')      # estimativa para diagonais
-    # Geometria: treliça em ponte com 3 vãos
-    # Nós base: 1-5 (em linha horizontal); nós topo: 6-9
+    A = mpf('6e-3'); A_d = mpf('1.5')*A; A_12 = mpf('0.5')*A
+    I = mpf('1e-8')
+
     s = Structure(dim='2d', elem_type='truss')
-    # Geometria conforme Weaver original (treliça Pratt-like)
-    # 4 vãos horizontais de L cada, altura L
-    for i in range(5):
-        s.add_node(i+1, i*L, 0)
-    for i in range(4):
-        s.add_node(6+i, (i+mpf('0.5'))*L, L)
-    # Barras horizontais base
-    for i in range(4):
-        s.add_element(i+1, i+1, i+2, E, A_vh, rho, I=I_vh)
-    # Diagonais e verticais para o topo
-    e_id = 5
-    for i in range(4):
-        s.add_element(e_id, i+1, 6+i, E, A_d, rho, I=I_d); e_id += 1
-        s.add_element(e_id, 6+i, i+2, E, A_d, rho, I=I_d); e_id += 1
-    # Cordão superior
-    for i in range(3):
-        s.add_element(e_id, 6+i, 7+i, E, A_vh, rho, I=I_vh); e_id += 1
-    # Restrições: nós base extremos
+    coords = {1:(0,L), 2:(0,0), 3:(L,L), 4:(L,0), 5:(2*L,L), 6:(2*L,0),
+              7:(3*L,L), 8:(3*L,0), 9:(4*L,L), 10:(4*L,0)}
+    for nid, (x, y) in coords.items():
+        s.add_node(nid, x, y)
+    # Cordão superior [1-4]
+    s.add_element(1, 1, 3, E, A, rho, I=I)
+    s.add_element(2, 3, 5, E, A, rho, I=I)
+    s.add_element(3, 5, 7, E, A, rho, I=I)
+    s.add_element(4, 7, 9, E, A, rho, I=I)
+    # Cordão inferior [5-8]
+    s.add_element(5, 2, 4, E, A, rho, I=I)
+    s.add_element(6, 4, 6, E, A, rho, I=I)
+    s.add_element(7, 6, 8, E, A, rho, I=I)
+    s.add_element(8, 8, 10, E, A, rho, I=I)
+    # Verticais [9-12]
+    s.add_element(9, 3, 4, E, A, rho, I=I)
+    s.add_element(10, 5, 6, E, A, rho, I=I)
+    s.add_element(11, 7, 8, E, A, rho, I=I)
+    s.add_element(12, 9, 10, E, A_12, rho, I=I)   # área 0.5A
+    # Diagonais [13-16]
+    s.add_element(13, 2, 3, E, A_d, rho, I=I)
+    s.add_element(14, 4, 5, E, A_d, rho, I=I)
+    s.add_element(15, 6, 7, E, A_d, rho, I=I)
+    s.add_element(16, 8, 9, E, A_d, rho, I=I)
+    # Apoios: nós 1, 2 totalmente fixos
     s.add_constraint(1, [0, 1])
-    s.add_constraint(5, [1])
+    s.add_constraint(2, [0, 1])
+    # Simetria nos nós 9, 10
+    if restricao_freq == 1:
+        s.add_constraint(9, [0]); s.add_constraint(10, [0])   # horizontal (sym)
+    else:
+        s.add_constraint(9, [1]); s.add_constraint(10, [1])   # vertical (antisym)
     return s
 
 
@@ -255,60 +287,6 @@ def ex04_13nos(subdiv=4):
             s.add_element(eid, ids[j], ids[j+1], E, A, rho, Iy=I, Iz=I, G=G, J=J, Ix=I)
             eid += 1
         s.add_constraint(apoio_id, [0, 1, 2, 3, 4, 5])
-    return s
-
-
-# =============================================================================
-# Ex 02 — Treliça plana simétrica Weaver (Fig 5.7)
-# 10 nós (5 superior, 5 inferior), 16 barras, alumínio
-# A_vh=6e-3, A_diag=1.5A, A_12=0.5A, E=69GPa, ρ=2620, L=5m
-# Tabela 5.5: Modo 1 = 79.55 Hz (Weaver), 79.55 Hz (1MM tese)
-# =============================================================================
-
-def ex02_8nos(restricao_freq=1):
-    """
-    Treliça simétrica de Weaver (Fig 5.7 da tese).
-    Conforme texto da tese, a "primeira frequência" usa restrições horizontais
-    em 9 e 10, enquanto a "segunda" usa restrições verticais nestes mesmos nós.
-    """
-    E = mpf('69e9'); rho = mpf('2620'); L = mpf(5)
-    A = mpf('6e-3'); A_diag = mpf('1.5') * A; A_12 = mpf('0.5') * A
-    I = mpf('1e-7'); I_d = mpf('1.5e-7'); I_12 = mpf('0.5e-7')
-
-    s = Structure(dim='2d', elem_type='truss')
-    # Nós ímpares = topo (y=L); pares = base (y=0)
-    pts_top = [(0, L), (L, L), (2*L, L), (3*L, L), (4*L, L)]
-    pts_bot = [(0, 0), (L, 0), (2*L, 0), (3*L, 0), (4*L, 0)]
-    for i in range(5):
-        s.add_node(2*i+1, *pts_top[i])
-        s.add_node(2*i+2, *pts_bot[i])
-
-    elem_id = 1
-    # Cordão superior
-    for k in range(4):
-        s.add_element(elem_id, 1+2*k, 3+2*k, E, A, rho, I=I); elem_id += 1
-    # Cordão inferior
-    for k in range(4):
-        s.add_element(elem_id, 2+2*k, 4+2*k, E, A, rho, I=I); elem_id += 1
-    # Verticais (barra 12 é o 1º vertical, com área 0.5A)
-    for k in range(5):
-        if k == 0:
-            s.add_element(elem_id, 1, 2, E, A_12, rho, I=I_12); elem_id += 1
-        else:
-            s.add_element(elem_id, 1+2*k, 2+2*k, E, A, rho, I=I); elem_id += 1
-    # Diagonais (4 painéis)
-    for k in range(4):
-        s.add_element(elem_id, 2+2*k, 3+2*k, E, A_diag, rho, I=I_d); elem_id += 1
-
-    # Restrições conforme tese
-    s.add_constraint(1, [0, 1])
-    s.add_constraint(2, [0, 1])
-    if restricao_freq == 1:
-        s.add_constraint(9, [0])
-        s.add_constraint(10, [0])
-    else:
-        s.add_constraint(9, [1])
-        s.add_constraint(10, [1])
     return s
 
 
