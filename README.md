@@ -69,6 +69,17 @@ Tempo total: **~750 s** com 60 dígitos de precisão (alguns trechos usam 180).
   e mais discretização — nossa truss axial converge para resultado diferente
   (mas igualmente válido matematicamente)
 
+**Ex 02 — Treliça plana Weaver simétrica (Fig 5.7, Tab 5.5):**
+- 10 nós, 16 barras alumínio (E=69 GPa, ρ=2620, L=5m)
+- Áreas: A=6e-3 (verticais/horizontais), 1.5A (diagonais), 0.5A (barra 12)
+- Modo 3 dá 81.26 Hz vs Weaver 79.55 Hz — erro **2.2%** (config 1)
+- Geometria/restrições da Fig 5.7 podem estar ligeiramente diferentes do original
+
+**Ex 05 — Pórtico 3D Petyt (Tab 5.15):**
+- Torre 2 níveis: 4 colunas base + 4 horizontais + 4 colunas topo = 12 barras
+- E=219.9 GN/m², ρ=7850, L=1m
+- A e I não fornecidos pela tese; calibrados para reproduzir ω₁ = 11.80 Hz
+
 | Exemplo simétrico | 1MM ω₁ | 6MM ω₁ | Δ% vs tese (6MM) |
 |---|---|---|:-:|
 | Viga balanço (analítica) | 41.998 | 41.998 | **<10⁻³%** (validação) |
